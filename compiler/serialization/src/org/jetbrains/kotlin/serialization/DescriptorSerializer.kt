@@ -40,26 +40,26 @@ import org.jetbrains.kotlin.types.typeUtil.contains
 import org.jetbrains.kotlin.types.typeUtil.immediateSupertypes
 import java.util.*
 
-class DescriptorSerializer private constructor(
+open class DescriptorSerializer (
         private val containingDeclaration: DeclarationDescriptor?,
-        private val typeParameters: Interner<TypeParameterDescriptor>,
-        private val extension: SerializerExtension,
-        private val typeTable: MutableTypeTable,
-        private val versionRequirementTable: MutableVersionRequirementTable,
-        private val serializeTypeTableToFunction: Boolean
+        protected val typeParameters: Interner<TypeParameterDescriptor>,
+        protected val extension: SerializerExtension,
+        protected val typeTable: MutableTypeTable,
+        protected val versionRequirementTable: MutableVersionRequirementTable,
+        protected val serializeTypeTableToFunction: Boolean
 ) {
     private val contractSerializer = ContractSerializer()
 
-    private fun createChildSerializer(descriptor: DeclarationDescriptor): DescriptorSerializer =
+    open fun createChildSerializer(descriptor: DeclarationDescriptor): DescriptorSerializer =
             DescriptorSerializer(descriptor, Interner(typeParameters), extension, typeTable, versionRequirementTable,
                                  serializeTypeTableToFunction = false)
 
     val stringTable: DescriptorAwareStringTable
         get() = extension.stringTable
 
-    private fun useTypeTable(): Boolean = extension.shouldUseTypeTable()
+    fun useTypeTable(): Boolean = extension.shouldUseTypeTable()
 
-    fun classProto(classDescriptor: ClassDescriptor): ProtoBuf.Class.Builder {
+    open fun classProto(classDescriptor: ClassDescriptor): ProtoBuf.Class.Builder {
         val builder = ProtoBuf.Class.newBuilder()
 
         val flags = Flags.getClassFlags(
@@ -178,7 +178,7 @@ class DescriptorSerializer private constructor(
         return false
     }
 
-    fun propertyProto(descriptor: PropertyDescriptor): ProtoBuf.Property.Builder {
+    open fun propertyProto(descriptor: PropertyDescriptor): ProtoBuf.Property.Builder {
         val builder = ProtoBuf.Property.newBuilder()
 
         val local = createChildSerializer(descriptor)
@@ -281,7 +281,7 @@ class DescriptorSerializer private constructor(
             else
                 descriptor.visibility
 
-    fun functionProto(descriptor: FunctionDescriptor): ProtoBuf.Function.Builder {
+    open fun functionProto(descriptor: FunctionDescriptor): ProtoBuf.Function.Builder {
         val builder = ProtoBuf.Function.newBuilder()
 
         val local = createChildSerializer(descriptor)
@@ -349,7 +349,7 @@ class DescriptorSerializer private constructor(
         return builder
     }
 
-    fun constructorProto(descriptor: ConstructorDescriptor): ProtoBuf.Constructor.Builder {
+    open fun constructorProto(descriptor: ConstructorDescriptor): ProtoBuf.Constructor.Builder {
         val builder = ProtoBuf.Constructor.newBuilder()
 
         val local = createChildSerializer(descriptor)
@@ -402,7 +402,7 @@ class DescriptorSerializer private constructor(
         )
     }
 
-    fun typeAliasProto(descriptor: TypeAliasDescriptor): ProtoBuf.TypeAlias.Builder {
+    private fun typeAliasProto(descriptor: TypeAliasDescriptor): ProtoBuf.TypeAlias.Builder {
         val builder = ProtoBuf.TypeAlias.newBuilder()
         val local = createChildSerializer(descriptor)
 
@@ -442,14 +442,14 @@ class DescriptorSerializer private constructor(
         return builder
     }
 
-    fun enumEntryProto(descriptor: ClassDescriptor): ProtoBuf.EnumEntry.Builder {
+    private fun enumEntryProto(descriptor: ClassDescriptor): ProtoBuf.EnumEntry.Builder {
         val builder = ProtoBuf.EnumEntry.newBuilder()
         builder.name = getSimpleNameIndex(descriptor.name)
         extension.serializeEnumEntry(descriptor, builder)
         return builder
     }
 
-    private fun valueParameter(descriptor: ValueParameterDescriptor): ProtoBuf.ValueParameter.Builder {
+    protected fun valueParameter(descriptor: ValueParameterDescriptor): ProtoBuf.ValueParameter.Builder {
         val builder = ProtoBuf.ValueParameter.newBuilder()
 
         val declaresDefaultValue = descriptor.declaresDefaultValue() || descriptor.isActualParameterWithAnyExpectedDefault
@@ -485,7 +485,7 @@ class DescriptorSerializer private constructor(
         return builder
     }
 
-    private fun typeParameter(typeParameter: TypeParameterDescriptor): ProtoBuf.TypeParameter.Builder {
+    protected open fun typeParameter(typeParameter: TypeParameterDescriptor): ProtoBuf.TypeParameter.Builder {
         val builder = ProtoBuf.TypeParameter.newBuilder()
 
         builder.id = getTypeParameterId(typeParameter)
@@ -517,9 +517,9 @@ class DescriptorSerializer private constructor(
         return builder
     }
 
-    internal fun typeId(type: KotlinType): Int = typeTable[type(type)]
+    fun typeId(type: KotlinType): Int = typeTable[type(type)]
 
-    internal fun type(type: KotlinType): ProtoBuf.Type.Builder {
+    protected open fun type(type: KotlinType): ProtoBuf.Type.Builder {
         val builder = ProtoBuf.Type.newBuilder()
 
         if (type.isError) {
@@ -609,7 +609,7 @@ class DescriptorSerializer private constructor(
         }
     }
 
-    private fun typeArgument(typeProjection: TypeProjection): ProtoBuf.Type.Argument.Builder {
+    protected fun typeArgument(typeProjection: TypeProjection): ProtoBuf.Type.Argument.Builder {
         val builder = ProtoBuf.Type.Argument.newBuilder()
 
         if (typeProjection.isStarProjection) {
@@ -633,7 +633,7 @@ class DescriptorSerializer private constructor(
         return builder
     }
 
-    fun packagePartProto(packageFqName: FqName, members: Collection<DeclarationDescriptor>): ProtoBuf.Package.Builder {
+    open fun packagePartProto(packageFqName: FqName, members: Collection<DeclarationDescriptor>): ProtoBuf.Package.Builder {
         val builder = ProtoBuf.Package.newBuilder()
 
         for (declaration in sort(members)) {
@@ -775,19 +775,19 @@ class DescriptorSerializer private constructor(
             return serializer
         }
 
-        private fun variance(variance: Variance): ProtoBuf.TypeParameter.Variance = when (variance) {
+        fun variance(variance: Variance): ProtoBuf.TypeParameter.Variance = when (variance) {
             Variance.INVARIANT -> ProtoBuf.TypeParameter.Variance.INV
             Variance.IN_VARIANCE -> ProtoBuf.TypeParameter.Variance.IN
             Variance.OUT_VARIANCE -> ProtoBuf.TypeParameter.Variance.OUT
         }
 
-        private fun projection(projectionKind: Variance): ProtoBuf.Type.Argument.Projection = when (projectionKind) {
+        fun projection(projectionKind: Variance): ProtoBuf.Type.Argument.Projection = when (projectionKind) {
             Variance.INVARIANT -> ProtoBuf.Type.Argument.Projection.INV
             Variance.IN_VARIANCE -> ProtoBuf.Type.Argument.Projection.IN
             Variance.OUT_VARIANCE -> ProtoBuf.Type.Argument.Projection.OUT
         }
 
-        private fun hasAnnotations(descriptor: Annotated?): Boolean =
+        fun hasAnnotations(descriptor: Annotated?): Boolean =
             descriptor != null && descriptor.nonSourceAnnotations.isNotEmpty()
 
         fun <T : DeclarationDescriptor> sort(descriptors: Collection<T>): List<T> =
