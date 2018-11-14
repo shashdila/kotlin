@@ -10370,6 +10370,11 @@ public class IrJsCodegenBoxTestGenerated extends AbstractIrJsCodegenBoxTest {
             runTest("compiler/testData/codegen/box/inlineClasses/iterateOverListOfInlineClassValues.kt");
         }
 
+        @TestMetadata("javaClassIntrinsicOnInlineClasses.kt")
+        public void testJavaClassIntrinsicOnInlineClasses() throws Exception {
+            runTest("compiler/testData/codegen/box/inlineClasses/javaClassIntrinsicOnInlineClasses.kt");
+        }
+
         @TestMetadata("kt25246.kt")
         public void testKt25246() throws Exception {
             runTest("compiler/testData/codegen/box/inlineClasses/kt25246.kt");
