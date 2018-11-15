@@ -1,4 +1,5 @@
 // WITH_RUNTIME
+// TARGET_BACKEND: JVM
 
 package root
 
