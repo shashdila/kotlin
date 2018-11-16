@@ -44,13 +44,16 @@ class BridgeDependenciesResolver(
 
             val defaultImports = scriptCompilationConfiguration[ScriptCompilationConfiguration.defaultImports]?.toList() ?: emptyList()
 
+            fun ScriptCompilationConfiguration.toDependencies(classpath: List<File>): ScriptDependencies = ScriptDependencies(
+                classpath = classpath,
+                sources = this[ScriptCompilationConfiguration.ide.dependenciesSources].toClassPathOrEmpty(),
+                imports = defaultImports,
+                scripts = this[ScriptCompilationConfiguration.requireSources].toFilesOrEmpty()
+            )
+
             val refineFn = scriptCompilationConfiguration[ScriptCompilationConfiguration.refineConfigurationOnAnnotations]?.handler
                 ?: return DependenciesResolver.ResolveResult.Success(
-                    ScriptDependencies(
-                        classpath = oldClasspath,
-                        sources = scriptCompilationConfiguration[ScriptCompilationConfiguration.ide.dependenciesSources].toClassPathOrEmpty(),
-                        imports = defaultImports
-                    ),
+                    scriptCompilationConfiguration.toDependencies(oldClasspath),
                     diagnostics
                 )
 
@@ -73,11 +76,8 @@ class BridgeDependenciesResolver(
             }
 
             return DependenciesResolver.ResolveResult.Success(
-                ScriptDependencies(
-                    classpath = newClasspath, // TODO: maybe it should return only increment from the initial config
-                    sources = refinedConfiguration[ScriptCompilationConfiguration.ide.dependenciesSources].toClassPathOrEmpty(),
-                    imports = defaultImports
-                ),
+                // TODO: consider returning only increment from the initial config
+                refinedConfiguration.toDependencies(newClasspath),
                 diagnostics
             )
         } catch (e: Throwable) {
@@ -98,3 +98,9 @@ internal fun ScriptContents.toScriptSource(): SourceCode = when {
 }
 
 internal fun List<ScriptDependency>?.toClassPathOrEmpty() = this?.flatMap { (it as JvmDependency).classpath } ?: emptyList()
+
+internal fun List<SourceCode>?.toFilesOrEmpty() = this?.map {
+    val externalSource = it as? ExternalSourceCode
+    externalSource?.externalLocation?.toFile()
+        ?: throw RuntimeException("Unsupported source in requireSources parameter - only local files are supported now (${externalSource?.externalLocation})")
+} ?: emptyList()

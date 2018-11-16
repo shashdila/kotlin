@@ -23,6 +23,7 @@ data class ScriptDependencies(
         val classpath: List<File> = emptyList(),
         val imports: List<String> = emptyList(),
         val sources: List<File> = emptyList(),
+        // TODO: rename or refactor: it is not only scripts anymore, but source roots in general
         val scripts: List<File> = emptyList()
 ) {
     companion object {

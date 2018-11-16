@@ -5,7 +5,9 @@
 
 package kotlin.script.experimental.jvmhost.test
 
+import junit.framework.TestCase
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.test.KotlinTestUtils
 import org.jetbrains.kotlin.daemon.common.toHexString
 import org.junit.Assert
 import org.junit.Test
@@ -22,13 +24,32 @@ import kotlin.script.experimental.jvmhost.impl.CompiledScriptClassLoader
 import kotlin.script.experimental.jvmhost.impl.KJvmCompiledScript
 import kotlin.script.templates.standard.SimpleScriptTemplate
 
-class ScriptingHostTest {
+class ScriptingHostTest : TestCase() {
+
+    val tmpdir = KotlinTestUtils.tmpDirForTest(this)
+
+    companion object {
+        const val TEST_DATA_DIR = "libraries/scripting/jvm-host/testData"
+    }
 
     @Test
     fun testSimpleUsage() {
         val greeting = "Hello from script!"
         val output = captureOut {
             evalScript("println(\"$greeting\")")
+        }
+        Assert.assertEquals(greeting, output)
+    }
+
+    @Test
+    fun testSimpleRequire() {
+        val greeting = "Hello from required!"
+        val script = "val subj = RequiredClass().value\nprintln(\"Hello from \$subj!\")"
+        val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<SimpleScriptTemplate> {
+            requireSources(File(TEST_DATA_DIR, "importTest/requiredSrc.kt").toScriptSource())
+        }
+        val output = captureOut {
+            BasicJvmScriptingHost().eval(script.toScriptSource(), compilationConfiguration, null).throwOnFailure()
         }
         Assert.assertEquals(greeting, output)
     }
