@@ -26,4 +26,10 @@ class CliAndroidPackageFragmentProviderExtension(private val isExperimental: Boo
     override fun getLayoutXmlFileManager(project: Project, moduleInfo: ModuleInfo?): AndroidLayoutXmlFileManager? {
         return ServiceManager.getService(project, AndroidLayoutXmlFileManager::class.java)
     }
+
+    override fun <T> createLazyValue(value: () -> T): () -> T {
+        // There's no evidence we ever need laziness in Android Extensions in CLI mode
+        val evaluatedValue = value()
+        return { evaluatedValue }
+    }
 }

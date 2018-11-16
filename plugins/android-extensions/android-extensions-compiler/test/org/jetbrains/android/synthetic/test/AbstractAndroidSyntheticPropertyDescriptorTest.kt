@@ -48,7 +48,7 @@ abstract class AbstractAndroidSyntheticPropertyDescriptorTest : KtUsefulTestCase
 
         val renderer = DescriptorRenderer.COMPACT_WITH_MODIFIERS
         val expected = fragmentProvider.packages.values
-            .map { it.value }
+            .map { it() }
             .sortedBy { it.fqName.asString() }
             .joinToString(separator = "\n\n\n") {
                 val descriptors = it.getMemberScope().getContributedDescriptors()

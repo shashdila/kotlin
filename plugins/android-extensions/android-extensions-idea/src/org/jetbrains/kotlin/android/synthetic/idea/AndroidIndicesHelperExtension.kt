@@ -50,7 +50,7 @@ class AndroidIndicesHelperExtension : KotlinIndicesHelperExtension {
             handleScope(packageFragment.getMemberScope())
             for (fragment in packageFragment.subpackages) {
                 if (fragment.isDeprecated) continue
-                handleScope(fragment.descriptor.value.getMemberScope())
+                handleScope(fragment.descriptor().getMemberScope())
             }
         }
     }
