@@ -1615,8 +1615,8 @@ public abstract class StackValue {
 
                 v.visitFieldInsn(isStaticPut ? GETSTATIC : GETFIELD,
                                  backingFieldOwner.getInternalName(), fieldName, this.type.getDescriptor());
-                if (!skipLateinitAssertion) {
-                    genNotNullAssertionForLateInitIfNeeded(v);
+                if (!skipLateinitAssertion && descriptor.isLateInit() && !JvmAbi.isPropertyWithBackingFieldInOuterClass(descriptor)) {
+                    genNonNullAssertForLateinit(v, descriptor.getName().asString());
                 }
                 coerceTo(type, kotlinType, v);
             }
@@ -1648,6 +1648,18 @@ public abstract class StackValue {
                 }
 
                 coerce(typeOfValueOnStack, kotlinTypeOfValueOnStack, type, kotlinType, v);
+
+                // For lateinit properties in companion object, the assertion is generated in the public getFoo method in the companion
+                // and _not_ in the synthetic accessor in the outer class. The reason is that this way, the synthetic accessor can be reused
+                // for isInitialized checks, which require that there's no assertion.
+                // Note that (hopefully) the only place where the synthetic accessor is called is the public getFoo method body, but even
+                // if not, it's not a big deal since the following code generates an assertion after each call to the synthetic accessor.
+                if (descriptor instanceof AccessorForPropertyBackingField) {
+                    PropertyDescriptor property = ((AccessorForPropertyBackingField) descriptor).getCalleeDescriptor();
+                    if (!skipLateinitAssertion && property.isLateInit() && JvmAbi.isPropertyWithBackingFieldInOuterClass(property)) {
+                        genNonNullAssertForLateinit(v, property.getName().asString());
+                    }
+                }
 
                 KotlinType returnType = descriptor.getReturnType();
                 if (returnType != null && KotlinBuiltIns.isNothing(returnType)) {
@@ -1685,12 +1697,6 @@ public abstract class StackValue {
             StackValue.constant(value, this.type, this.kotlinType).putSelector(type, kotlinType, v);
 
             return true;
-        }
-
-        private void genNotNullAssertionForLateInitIfNeeded(@NotNull InstructionAdapter v) {
-            if (!descriptor.isLateInit()) return;
-
-            StackValue.genNonNullAssertForLateinit(v, descriptor.getName().asString());
         }
 
         @Override
